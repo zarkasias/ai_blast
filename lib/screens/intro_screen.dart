@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import '../providers/game_provider.dart';
+import '../widgets/animated_block.dart';
 import 'game_screen.dart';
+import 'level_screen.dart';
 import 'dart:math';
 
 class IntroScreen extends StatefulWidget {
@@ -150,33 +153,14 @@ class _IntroScreenState extends State<IntroScreen> with SingleTickerProviderStat
                     ),
                     itemCount: 9,
                     itemBuilder: (context, index) {
-                      return AnimatedBuilder(
-                        animation: _controller,
-                        builder: (context, child) {
-                          final delay = index / 10;
-                          final animation = math.sin((_controller.value * 2 * math.pi) + delay);
-                          return Transform.scale(
-                            scale: 0.8 + (animation * 0.2),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: gridColors[index],
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0.5),
-                                  width: 2,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: gridColors[index].withOpacity(0.3),
-                                    blurRadius: 8,
-                                    spreadRadius: 1,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
+                      return AnimatedBlock(
+                        block: Block(
+                          id: index,
+                          color: gridColors[index],
+                          row: index ~/ 3,
+                          col: index % 3,
+                        ),
+                        onTap: () {},
                       );
                     },
                   ),
@@ -186,7 +170,7 @@ class _IntroScreenState extends State<IntroScreen> with SingleTickerProviderStat
                 GestureDetector(
                   onTap: () {
                     Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(builder: (context) => const GameScreen()),
+                      MaterialPageRoute(builder: (context) => const LevelScreen()),
                     );
                   },
                   child: AnimatedBuilder(

@@ -39,6 +39,8 @@ class GameProvider extends ChangeNotifier {
   static const int gridSize = 8;
   late List<List<Block?>> grid;
   int score = 0;
+  int currentLevel = 1;
+  int highestUnlockedLevel = 1;
   bool isGameOver = false;
   bool isNearGameOver = false;
   List<Block> selectedBlocks = [];
@@ -47,6 +49,15 @@ class GameProvider extends ChangeNotifier {
   bool isInitialized = false;
   final AudioService _audioService = AudioService();
   
+  // Level configuration
+  static const Map<int, int> levelTargets = {
+    1: 1000,   // Level 1: Score 1000 to advance
+    2: 2500,   // Level 2: Score 2500 to advance
+    3: 5000,   // Level 3: Score 5000 to advance
+    4: 10000,  // Level 4: Score 10000 to advance
+    5: 20000,  // Level 5: Score 20000 to advance
+  };
+
   // Available colors for blocks
   final List<Color> blockColors = const [
     Color(0xFFFF4B4B),  // Red
@@ -67,19 +78,12 @@ class GameProvider extends ChangeNotifier {
     return blockColors[_random.nextInt(blockColors.length)];
   }
 
-  GameProvider() {
-    // Initialize grid immediately
-    grid = List.generate(gridSize, (row) {
-      return List.generate(gridSize, (col) {
-        return Block(
-          id: row * gridSize + col,
-          color: getRandomColor(),
-          row: row,
-          col: col,
-        );
-      });
-    });
-    _initialize();
+  int getCurrentLevelTarget() {
+    return levelTargets[currentLevel] ?? 999999; // Return a high number for levels beyond the map
+  }
+
+  bool hasReachedLevelTarget() {
+    return score >= getCurrentLevelTarget();
   }
 
   Future<void> _initialize() async {
@@ -90,13 +94,13 @@ class GameProvider extends ChangeNotifier {
       ]).then((results) {
         final prefs = results[0] as SharedPreferences;
         shouldShowTutorial = prefs.getBool('has_seen_tutorial') != true;
+        highestUnlockedLevel = prefs.getInt('highest_unlocked_level') ?? 1;
       });
       
       isInitialized = true;
       notifyListeners();
     } catch (e) {
       debugPrint('Error during initialization: $e');
-      // If there's an error, still mark as initialized
       isInitialized = true;
       notifyListeners();
     }
@@ -116,8 +120,17 @@ class GameProvider extends ChangeNotifier {
     }
   }
 
-  void initializeGame() {
+  void startLevel(int level) {
+    if (level < 1 || level > levelTargets.length) return;
+    currentLevel = level;
+    initializeGame(false);
+  }
+
+  void initializeGame([bool isNewGame = true]) {
+    // Clear any existing selections
     selectedBlocks = [];
+    
+    // Reset the grid with new random blocks
     grid = List.generate(gridSize, (row) {
       return List.generate(gridSize, (col) {
         return Block(
@@ -128,11 +141,50 @@ class GameProvider extends ChangeNotifier {
         );
       });
     });
+
+    // Reset game state variables
+    if (isNewGame) {
+      currentLevel = 1;
+    }
     score = 0;
     isGameOver = false;
     isNearGameOver = false;
     movesWithoutMatch = 0;
+
+    // Check initial game state to ensure there are valid moves
+    checkGameState();
+    
+    // If no valid moves are available, recursively try again
+    if (isGameOver) {
+      initializeGame(isNewGame);
+      return;
+    }
+
+    // Start background music if it's not already playing
+    _audioService.startBackgroundMusic();
+
     notifyListeners();
+  }
+
+  Future<void> _saveProgress() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('highest_unlocked_level', highestUnlockedLevel);
+    } catch (e) {
+      debugPrint('Error saving progress: $e');
+    }
+  }
+
+  void advanceLevel() {
+    if (currentLevel < levelTargets.length) {
+      // Update highest unlocked level if needed
+      if (currentLevel >= highestUnlockedLevel) {
+        highestUnlockedLevel = currentLevel + 1;
+        _saveProgress();
+      }
+      currentLevel++;
+      notifyListeners();
+    }
   }
 
   void clearSelection() {
@@ -150,42 +202,65 @@ class GameProvider extends ChangeNotifier {
         (a.col == b.col && (a.row - b.row).abs() == 1);
   }
 
-  void selectBlock(int row, int col) {
-    if (grid[row][col] == null) return;
-    
-    final block = grid[row][col]!;
-    
-    // If clicking an already selected block, remove blocks
-    if (block.isSelected) {
-      if (selectedBlocks.length >= 2) {
-        removeSelectedBlocks();
-      } else {
-        clearSelection();
+  List<Point<int>> findMatchingGroup(int row, int col) {
+    if (grid[row][col] == null) return [];
+    final Color color = grid[row][col]!.color;
+    final Set<Point<int>> group = {Point(row, col)};
+    final List<Point<int>> toCheck = [Point(row, col)];
+
+    while (toCheck.isNotEmpty) {
+      final Point<int> current = toCheck.removeLast();
+      // Check all adjacent blocks
+      for (final Point<int> offset in [Point(-1, 0), Point(1, 0), Point(0, -1), Point(0, 1)]) {
+        final int newRow = current.x + offset.x;
+        final int newCol = current.y + offset.y;
+        
+        if (newRow >= 0 && newRow < gridSize && 
+            newCol >= 0 && newCol < gridSize &&
+            grid[newRow][newCol]?.color == color &&
+            !group.contains(Point(newRow, newCol))) {
+          group.add(Point(newRow, newCol));
+          toCheck.add(Point(newRow, newCol));
+        }
       }
+    }
+    
+    return group.length >= 3 ? group.toList() : [];
+  }
+
+  void selectBlock(int row, int col) {
+    if (isGameOver || grid[row][col] == null) return;
+
+    final block = grid[row][col]!;
+    final List<Point<int>> matchingGroup = findMatchingGroup(row, col);
+    
+    if (matchingGroup.isEmpty) {
+      // No valid group found, clear any existing selection
+      clearSelection();
       return;
     }
 
-    // If clicking a new block with different color, clear selection
-    if (selectedBlocks.isNotEmpty && selectedBlocks[0].color != block.color) {
-      clearSelection();
-    }
+    // Clear any existing selection
+    clearSelection();
 
-    // Check if the new block is adjacent to any selected block
-    if (selectedBlocks.isNotEmpty && 
-        !selectedBlocks.any((selected) => areBlocksAdjacent(selected, block))) {
-      clearSelection();
-    }
+    // Add all blocks in the matching group to selectedBlocks
+    selectedBlocks = matchingGroup.map((point) {
+      final block = grid[point.x][point.y]!;
+      grid[point.x][point.y] = block.copyWith(isSelected: true);
+      return block;
+    }).toList();
 
-    // Add the block to selection
-    selectedBlocks.add(block);
-    grid[row][col] = block.copyWith(isSelected: true);
     _audioService.playSelectSound();
+
+    // Remove the blocks immediately since we've confirmed it's a valid group
+    removeSelectedBlocks();
     
     notifyListeners();
   }
 
   void removeSelectedBlocks() {
-    if (selectedBlocks.length < 2) return;
+    // Only remove blocks if we have at least 3
+    if (selectedBlocks.length < 3) return;
 
     // Remove selected blocks and update score
     for (var block in selectedBlocks) {
@@ -193,12 +268,19 @@ class GameProvider extends ChangeNotifier {
     }
 
     // Update score - more blocks = higher multiplier
-    int multiplier = selectedBlocks.length - 1;
-    score += selectedBlocks.length * 10 * multiplier;
+    int multiplier = selectedBlocks.length - 2; // Start multiplier at 1 for 3 blocks
+    int basePoints = 10;
+    int levelBonus = currentLevel; // Add level bonus
+    score += selectedBlocks.length * basePoints * multiplier * levelBonus;
 
     _audioService.playMatchSound();
     selectedBlocks.clear();
     movesWithoutMatch = 0;
+
+    // Check if we've reached the level target
+    if (hasReachedLevelTarget()) {
+      advanceLevel();
+    }
 
     // Apply gravity with animation delay
     Future.delayed(const Duration(milliseconds: 300), () {
@@ -252,14 +334,30 @@ class GameProvider extends ChangeNotifier {
     if (grid[row][col] == null) return false;
     final Color color = grid[row][col]!.color;
     
-    // Check horizontally
-    if (col > 0 && grid[row][col - 1]?.color == color) return true;
-    if (col < gridSize - 1 && grid[row][col + 1]?.color == color) return true;
-    
-    // Check vertically
-    if (row > 0 && grid[row - 1][col]?.color == color) return true;
-    if (row < gridSize - 1 && grid[row + 1][col]?.color == color) return true;
-    
+    // Check horizontal groups
+    int horizontalCount = 1;
+    // Check left
+    for (int i = col - 1; i >= 0 && grid[row][i]?.color == color; i--) {
+      horizontalCount++;
+    }
+    // Check right
+    for (int i = col + 1; i < gridSize && grid[row][i]?.color == color; i++) {
+      horizontalCount++;
+    }
+    if (horizontalCount >= 3) return true;
+
+    // Check vertical groups
+    int verticalCount = 1;
+    // Check up
+    for (int i = row - 1; i >= 0 && grid[i][col]?.color == color; i--) {
+      verticalCount++;
+    }
+    // Check down
+    for (int i = row + 1; i < gridSize && grid[i][col]?.color == color; i++) {
+      verticalCount++;
+    }
+    if (verticalCount >= 3) return true;
+
     return false;
   }
 
@@ -271,19 +369,18 @@ class GameProvider extends ChangeNotifier {
       for (int col = 0; col < gridSize; col++) {
         if (hasMatchingNeighbors(row, col)) {
           possibleMoves++;
+          // Early exit if we find any valid moves
+          if (possibleMoves >= 1) {
+            isNearGameOver = false;
+            isGameOver = false;
+            return;
+          }
         }
       }
     }
 
-    // Set warning state if few moves are left
-    isNearGameOver = possibleMoves < 5;
-    
-    // Game is over if no moves are possible
-    if (possibleMoves == 0) {
-      isGameOver = true;
-      // Save high score or trigger other end-game events here
-    }
-    
+    // If we get here, no valid moves were found
+    isGameOver = true;
     notifyListeners();
   }
 
