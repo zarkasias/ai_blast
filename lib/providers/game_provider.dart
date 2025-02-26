@@ -9,6 +9,7 @@ class Block {
   bool isSelected;
   final int row;
   final int col;
+  final bool isBomb;
 
   Block({
     required this.id,
@@ -16,6 +17,7 @@ class Block {
     this.isSelected = false,
     required this.row,
     required this.col,
+    this.isBomb = false,
   });
 
   Block copyWith({
@@ -24,6 +26,7 @@ class Block {
     bool? isSelected,
     int? row,
     int? col,
+    bool? isBomb,
   }) {
     return Block(
       id: id ?? this.id,
@@ -31,12 +34,14 @@ class Block {
       isSelected: isSelected ?? this.isSelected,
       row: row ?? this.row,
       col: col ?? this.col,
+      isBomb: isBomb ?? this.isBomb,
     );
   }
 }
 
 class GameProvider extends ChangeNotifier {
   static const int gridSize = 8;
+  static const double bombProbability = 0.03; // 3% chance for a bomb block
   late List<List<Block?>> grid;
   int score = 0;
   int currentLevel = 1;
@@ -47,7 +52,7 @@ class GameProvider extends ChangeNotifier {
   int movesWithoutMatch = 0;
   bool shouldShowTutorial = true;
   bool isInitialized = false;
-  final AudioService _audioService = AudioService();
+  final AudioService _audioService;
   
   // Level configuration
   static const Map<int, int> levelTargets = {
@@ -63,12 +68,16 @@ class GameProvider extends ChangeNotifier {
     Color(0xFFFF4B4B),  // Red
     Color(0xFF4ECDC4),  // Turquoise
     Color(0xFFFFBE0B),  // Yellow
-    Color(0xFF43CEA2),  // Green
+    Color.fromARGB(255, 3, 139, 57),  // Dark Green
     Color(0xFF9B5DE5),  // Purple
     Color(0xFF185A9D),  // Deep Blue
   ];
 
   final Random _random = Random();
+
+  GameProvider({required AudioService audioService}) : _audioService = audioService {
+    _initialize();
+  }
 
   Color getRandomColor() {
     if (blockColors.isEmpty) {
@@ -88,19 +97,36 @@ class GameProvider extends ChangeNotifier {
 
   Future<void> _initialize() async {
     try {
-      await Future.wait([
-        SharedPreferences.getInstance(),
-        _audioService.initialize(),
-      ]).then((results) {
-        final prefs = results[0] as SharedPreferences;
-        shouldShowTutorial = prefs.getBool('has_seen_tutorial') != true;
-        highestUnlockedLevel = prefs.getInt('highest_unlocked_level') ?? 1;
-      });
+      debugPrint('GameProvider: Starting initialization...');
+      
+      // Load preferences
+      final prefs = await SharedPreferences.getInstance();
+      shouldShowTutorial = prefs.getBool('has_seen_tutorial') != true;
+      
+      // Reset highest unlocked level to 1 if not found in preferences
+      highestUnlockedLevel = 1;
+      try {
+        final savedLevel = prefs.getInt('highest_unlocked_level');
+        if (savedLevel != null && savedLevel > 0 && savedLevel <= levelTargets.length) {
+          highestUnlockedLevel = savedLevel;
+        } else {
+          // If invalid saved level, reset it
+          await prefs.setInt('highest_unlocked_level', 1);
+        }
+      } catch (e) {
+        debugPrint('GameProvider: Error loading highest level: $e');
+        // Reset to level 1 if there's an error
+        await prefs.setInt('highest_unlocked_level', 1);
+      }
+      
+      // Initialize the game
+      initializeGame();
       
       isInitialized = true;
       notifyListeners();
+      debugPrint('GameProvider: Initialization complete with highest level: $highestUnlockedLevel');
     } catch (e) {
-      debugPrint('Error during initialization: $e');
+      debugPrint('GameProvider: Error during initialization: $e');
       isInitialized = true;
       notifyListeners();
     }
@@ -122,8 +148,28 @@ class GameProvider extends ChangeNotifier {
 
   void startLevel(int level) {
     if (level < 1 || level > levelTargets.length) return;
+    
+    // Set the level first
     currentLevel = level;
+    
+    // Then initialize the game with the correct level
     initializeGame(false);
+    
+    // Notify listeners to update UI
+    notifyListeners();
+  }
+
+  Block createBlock(int row, int col) {
+    final color = getRandomColor();
+    final shouldBeBomb = _random.nextDouble() < bombProbability;
+    
+    return Block(
+      id: row * gridSize + col,
+      color: color,
+      row: row,
+      col: col,
+      isBomb: shouldBeBomb,
+    );
   }
 
   void initializeGame([bool isNewGame = true]) {
@@ -133,12 +179,7 @@ class GameProvider extends ChangeNotifier {
     // Reset the grid with new random blocks
     grid = List.generate(gridSize, (row) {
       return List.generate(gridSize, (col) {
-        return Block(
-          id: row * gridSize + col,
-          color: getRandomColor(),
-          row: row,
-          col: col,
-        );
+        return createBlock(row, col);
       });
     });
 
@@ -146,7 +187,7 @@ class GameProvider extends ChangeNotifier {
     if (isNewGame) {
       currentLevel = 1;
     }
-    score = 0;
+    score = 0;  // Always reset score
     isGameOver = false;
     isNearGameOver = false;
     movesWithoutMatch = 0;
@@ -160,18 +201,18 @@ class GameProvider extends ChangeNotifier {
       return;
     }
 
-    // Start background music if it's not already playing
-    _audioService.startBackgroundMusic();
-
     notifyListeners();
   }
 
   Future<void> _saveProgress() async {
     try {
+      debugPrint('GameProvider: Saving progress - highest level: $highestUnlockedLevel');
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('highest_unlocked_level', highestUnlockedLevel);
+      if (highestUnlockedLevel > 0 && highestUnlockedLevel <= levelTargets.length) {
+        await prefs.setInt('highest_unlocked_level', highestUnlockedLevel);
+      }
     } catch (e) {
-      debugPrint('Error saving progress: $e');
+      debugPrint('GameProvider: Error saving progress: $e');
     }
   }
 
@@ -180,9 +221,10 @@ class GameProvider extends ChangeNotifier {
       // Update highest unlocked level if needed
       if (currentLevel >= highestUnlockedLevel) {
         highestUnlockedLevel = currentLevel + 1;
-        _saveProgress();
+        _saveProgress(); // Save progress when unlocking new level
       }
       currentLevel++;
+      debugPrint('GameProvider: Advanced to level $currentLevel, highest unlocked: $highestUnlockedLevel');
       notifyListeners();
     }
   }
@@ -232,18 +274,26 @@ class GameProvider extends ChangeNotifier {
     if (isGameOver || grid[row][col] == null) return;
 
     final block = grid[row][col]!;
+    
+    // Special handling for bomb blocks
+    if (block.isBomb) {
+      clearSelection();
+      selectedBlocks = [block];
+      grid[row][col] = block.copyWith(isSelected: true);
+      _audioService.playBurstSound();
+      removeSelectedBlocks();
+      return;
+    }
+
     final List<Point<int>> matchingGroup = findMatchingGroup(row, col);
     
     if (matchingGroup.isEmpty) {
-      // No valid group found, clear any existing selection
       clearSelection();
       return;
     }
 
-    // Clear any existing selection
     clearSelection();
 
-    // Add all blocks in the matching group to selectedBlocks
     selectedBlocks = matchingGroup.map((point) {
       final block = grid[point.x][point.y]!;
       grid[point.x][point.y] = block.copyWith(isSelected: true);
@@ -251,27 +301,48 @@ class GameProvider extends ChangeNotifier {
     }).toList();
 
     _audioService.playSelectSound();
-
-    // Remove the blocks immediately since we've confirmed it's a valid group
     removeSelectedBlocks();
     
     notifyListeners();
   }
 
   void removeSelectedBlocks() {
-    // Only remove blocks if we have at least 3
-    if (selectedBlocks.length < 3) return;
+    if (selectedBlocks.isEmpty) return;
 
-    // Remove selected blocks and update score
-    for (var block in selectedBlocks) {
-      grid[block.row][block.col] = null;
+    final bool isBombBlock = selectedBlocks.first.isBomb;
+    final Color bombColor = selectedBlocks.first.color;
+    
+    if (isBombBlock) {
+      // Remove all blocks of the same color
+      for (int row = 0; row < gridSize; row++) {
+        for (int col = 0; col < gridSize; col++) {
+          if (grid[row][col]?.color == bombColor) {
+            grid[row][col] = null;
+          }
+        }
+      }
+      
+      // Calculate score based on number of blocks removed
+      int removedBlocks = selectedBlocks.length;
+      int multiplier = 5; // Higher multiplier for bomb blocks
+      int basePoints = 10;
+      int levelBonus = currentLevel;
+      score += removedBlocks * basePoints * multiplier * levelBonus;
+    } else {
+      // Normal block removal logic
+      if (selectedBlocks.length < 3) return;
+
+      // Remove selected blocks
+      for (var block in selectedBlocks) {
+        grid[block.row][block.col] = null;
+      }
+
+      // Update score - more blocks = higher multiplier
+      int multiplier = selectedBlocks.length - 2;
+      int basePoints = 10;
+      int levelBonus = currentLevel;
+      score += selectedBlocks.length * basePoints * multiplier * levelBonus;
     }
-
-    // Update score - more blocks = higher multiplier
-    int multiplier = selectedBlocks.length - 2; // Start multiplier at 1 for 3 blocks
-    int basePoints = 10;
-    int levelBonus = currentLevel; // Add level bonus
-    score += selectedBlocks.length * basePoints * multiplier * levelBonus;
 
     _audioService.playMatchSound();
     selectedBlocks.clear();
@@ -318,12 +389,7 @@ class GameProvider extends ChangeNotifier {
     for (int col = 0; col < gridSize; col++) {
       for (int row = gridSize - 1; row >= 0; row--) {
         if (grid[row][col] == null) {
-          grid[row][col] = Block(
-            id: _random.nextInt(10000),
-            color: getRandomColor(),
-            row: row,
-            col: col,
-          );
+          grid[row][col] = createBlock(row, col);
         }
       }
     }
@@ -364,9 +430,14 @@ class GameProvider extends ChangeNotifier {
   // Enhanced game state checking
   void checkGameState() {
     int possibleMoves = 0;
+    bool hasBombBlock = false;
     
     for (int row = 0; row < gridSize; row++) {
       for (int col = 0; col < gridSize; col++) {
+        if (grid[row][col]?.isBomb == true) {
+          hasBombBlock = true;
+          break;
+        }
         if (hasMatchingNeighbors(row, col)) {
           possibleMoves++;
           // Early exit if we find any valid moves
@@ -377,9 +448,17 @@ class GameProvider extends ChangeNotifier {
           }
         }
       }
+      if (hasBombBlock) break;
     }
 
-    // If we get here, no valid moves were found
+    // If we have a bomb block, game is not over
+    if (hasBombBlock) {
+      isNearGameOver = false;
+      isGameOver = false;
+      return;
+    }
+
+    // If we get here and no bomb blocks found, no valid moves were found
     isGameOver = true;
     notifyListeners();
   }

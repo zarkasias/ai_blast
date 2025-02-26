@@ -19,23 +19,23 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
   final List<TutorialStep> _steps = [
     TutorialStep(
       title: 'Match Blocks',
-      description: 'Connect 2 or more blocks of the same color that are adjacent to each other.',
+      description: 'Connect 3 or more blocks of the same color that are adjacent to each other. The more blocks you match, the higher your score multiplier!',
       icon: Icons.grid_view_rounded,
     ),
     TutorialStep(
-      title: 'Score Points',
-      description: 'More blocks matched = higher score multiplier! Try to match as many blocks as possible.',
+      title: 'Mega Star Blocks',
+      description: 'Look out for special blocks with a star icon! When matched, they will destroy all blocks of the same color on the board for massive points!',
       icon: Icons.stars_rounded,
     ),
     TutorialStep(
-      title: 'Watch for Warnings',
-      description: 'When few moves are left, a warning will appear. Plan your moves carefully!',
-      icon: Icons.warning_amber_rounded,
+      title: 'Level Goals',
+      description: 'Each level has a target score. Match blocks strategically to reach the target and advance to the next level.',
+      icon: Icons.emoji_events_rounded,
     ),
     TutorialStep(
       title: 'Game Over',
-      description: 'The game ends when no more matches are possible. Try to get the highest score!',
-      icon: Icons.emoji_events_rounded,
+      description: 'The game ends when no more matches are possible. Use mega stars wisely to clear the board and keep playing!',
+      icon: Icons.warning_amber_rounded,
     ),
   ];
 
@@ -54,7 +54,7 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
           margin: const EdgeInsets.symmetric(horizontal: 32),
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.95),
+            color: const Color.fromARGB(180, 255, 255, 255),
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
@@ -74,9 +74,11 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
                   const Text(
                     'How to Play',
                     style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      fontFamily: 'Montserrat',
                       color: Color(0xFF185A9D),
+                      letterSpacing: 2,
                     ),
                   ),
                   IconButton(
@@ -124,8 +126,9 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
                           Text(
                             step.title,
                             style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 24,
+                              fontWeight: FontWeight.w900,
+                              fontFamily: 'Montserrat',
                               color: Color(0xFF185A9D),
                             ),
                           ),
@@ -133,10 +136,12 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
                           Text(
                             step.description,
                             textAlign: TextAlign.center,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 16,
-                              color: Colors.grey[700],
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'Montserrat',
                               height: 1.5,
+                              color: Color(0xFF666666),
                             ),
                           ),
                         ],
@@ -199,7 +204,11 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
                               SizedBox(width: 8),
                               Text(
                                 'Previous',
-                                style: TextStyle(fontSize: 16),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  fontFamily: 'Montserrat',
+                                ),
                               ),
                             ],
                           ),
@@ -236,7 +245,11 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
                           children: [
                             Text(
                               _currentPage < _steps.length - 1 ? 'Next' : 'Start',
-                              style: const TextStyle(fontSize: 16),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                fontFamily: 'Montserrat',
+                              ),
                             ),
                             const SizedBox(width: 8),
                             Icon(
