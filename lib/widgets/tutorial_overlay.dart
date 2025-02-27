@@ -54,7 +54,7 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
           margin: const EdgeInsets.symmetric(horizontal: 32),
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: const Color.fromARGB(180, 255, 255, 255),
+            color: const Color.fromARGB(220, 255, 255, 255),
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
