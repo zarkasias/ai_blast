@@ -15,8 +15,8 @@ class IntroScreen extends StatefulWidget {
 class _IntroScreenState extends State<IntroScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _rotateAnimation;
+  // late Animation<double> _scaleAnimation;
+  // late Animation<double> _rotateAnimation;
 
   // Define our game colors
   final List<Color> blockColors = const [
@@ -48,21 +48,21 @@ class _IntroScreenState extends State<IntroScreen>
       vsync: this,
     )..repeat(reverse: true);
 
-    _scaleAnimation = Tween<double>(
-      begin: 0.95,
-      end: 1.05,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeInOut,
-    ));
+    // _scaleAnimation = Tween<double>(
+    //   begin: 0.95,
+    //   end: 1.05,
+    // ).animate(CurvedAnimation(
+    //   parent: _controller,
+    //   curve: Curves.easeInOut,
+    // ));
 
-    _rotateAnimation = Tween<double>(
-      begin: -0.05,
-      end: 0.05,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeInOut,
-    ));
+    // _rotateAnimation = Tween<double>(
+    //   begin: -0.05,
+    //   end: 0.05,
+    // ).animate(CurvedAnimation(
+    //   parent: _controller,
+    //   curve: Curves.easeInOut,
+    // ));
   }
 
   @override
