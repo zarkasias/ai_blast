@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
+import '../models/level_config.dart';
 import '../widgets/game_grid.dart';
 import '../widgets/tutorial_overlay.dart';
 import '../widgets/animated_score.dart';
 import '../widgets/settings_button.dart';
+import '../widgets/level_objectives.dart';
 import 'level_screen.dart';
 
 class GameScreen extends StatefulWidget {
@@ -251,6 +253,16 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                                 ),
                               ),
 
+                            // Level Objectives
+                            if (gameProvider.currentLevelConfig.objectives.length > 1)
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(24, 0, 24, 6),
+                                child: LevelObjectives(
+                                  objectiveProgress: gameProvider.objectiveProgress,
+                                  objectiveTargets: gameProvider.currentLevelConfig.objectiveTargets,
+                                ),
+                              ),
+
                             // Game Grid
                             const Expanded(
                               child: Padding(
@@ -259,6 +271,30 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                                   aspectRatio: 1,
                                   child: GameGrid(),
                                 ),
+                              ),
+                            ),
+
+                            // Moves Left Counter
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(
+                                    Icons.swap_horiz_rounded,
+                                    color: Color(0xFF185A9D),
+                                    size: 24,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Moves Left: ${gameProvider.movesLeft}',
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF185A9D),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
 
@@ -310,158 +346,77 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                             color: Colors.black54,
                             child: Center(
                               child: Container(
-                                padding: const EdgeInsets.all(32),
                                 margin: const EdgeInsets.all(32),
+                                padding: const EdgeInsets.all(24),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
-                                  borderRadius: BorderRadius.circular(20),
+                                  borderRadius: BorderRadius.circular(16),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.3),
-                                      blurRadius: 20,
+                                      color: Colors.black.withOpacity(0.2),
+                                      blurRadius: 10,
                                       spreadRadius: 5,
-                                      offset: const Offset(0, 10),
                                     ),
                                   ],
                                 ),
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(
-                                      gameProvider.hasReachedLevelTarget() ? Icons.star_rounded : Icons.emoji_events_rounded,
-                                      color: gameProvider.hasReachedLevelTarget() ? Colors.amber : const Color(0xFF43CEA2),
+                                    const Icon(
+                                      Icons.sentiment_dissatisfied_rounded,
                                       size: 64,
+                                      color: Colors.red,
                                     ),
-                                    const SizedBox(height: 20),
-                                    Text(
-                                      gameProvider.hasReachedLevelTarget() ? 'LEVEL ${gameProvider.currentLevel} COMPLETE!' : 'GAME OVER',
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        fontSize: 32,
+                                    const SizedBox(height: 16),
+                                    const Text(
+                                      'GAME OVER',
+                                      style: TextStyle(
+                                        fontSize: 24,
                                         fontWeight: FontWeight.bold,
-                                        color: Color(0xFF185A9D),
-                                        letterSpacing: 2,
+                                        color: Colors.red,
                                       ),
                                     ),
-                                    const SizedBox(height: 12),
+                                    const SizedBox(height: 8),
                                     Text(
                                       'Final Score: ${gameProvider.score}',
                                       style: const TextStyle(
-                                        fontSize: 24,
-                                        color: Color(0xFF43CEA2),
-                                        fontWeight: FontWeight.bold,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
-                                    if (gameProvider.hasReachedLevelTarget() && gameProvider.currentLevel < GameProvider.levelTargets.length)
+                                    const SizedBox(height: 16),
+                                    if (gameProvider.currentLevelConfig.objectives.length > 1)
                                       Padding(
-                                        padding: const EdgeInsets.only(top: 8),
-                                        child: Text(
-                                          'Next Level Target: ${GameProvider.levelTargets[gameProvider.currentLevel + 1]}',
-                                          style: const TextStyle(
-                                            fontSize: 18,
-                                            color: Color(0xFF185A9D),
-                                          ),
+                                        padding: const EdgeInsets.only(bottom: 16),
+                                        child: LevelObjectives(
+                                          objectiveProgress: gameProvider.objectiveProgress,
+                                          objectiveTargets: gameProvider.currentLevelConfig.objectiveTargets,
+                                          isUnlocked: true,
                                         ),
                                       ),
-                                    const SizedBox(height: 32),
-                                    Column(
+                                    Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        // Continue or Play Again Button
-                                        if (gameProvider.hasReachedLevelTarget() && gameProvider.currentLevel < GameProvider.levelTargets.length)
-                                          GestureDetector(
-                                            onTap: () {
-                                              gameProvider.startLevel(gameProvider.currentLevel + 1);
-                                            },
-                                            child: Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 32,
-                                                vertical: 16,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFF43CEA2),
-                                                borderRadius: BorderRadius.circular(30),
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color: const Color(0xFF43CEA2).withOpacity(0.3),
-                                                    blurRadius: 8,
-                                                    spreadRadius: 1,
-                                                    offset: const Offset(0, 2),
-                                                  ),
-                                                ],
-                                              ),
-                                              child: const Text(
-                                                'NEXT LEVEL',
-                                                style: TextStyle(
-                                                  fontSize: 20,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Colors.white,
-                                                  letterSpacing: 2,
-                                                ),
-                                              ),
-                                            ),
-                                          )
-                                        else
-                                          GestureDetector(
-                                            onTap: () => gameProvider.initializeGame(),
-                                            child: Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 32,
-                                                vertical: 16,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFF43CEA2),
-                                                borderRadius: BorderRadius.circular(30),
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color: const Color(0xFF43CEA2).withOpacity(0.3),
-                                                    blurRadius: 8,
-                                                    spreadRadius: 1,
-                                                    offset: const Offset(0, 2),
-                                                  ),
-                                                ],
-                                              ),
-                                              child: const Text(
-                                                'PLAY AGAIN',
-                                                style: TextStyle(
-                                                  fontSize: 20,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Colors.white,
-                                                  letterSpacing: 2,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        const SizedBox(height: 16),
-                                        // Level Select Button
-                                        GestureDetector(
-                                          onTap: () {
-                                            Navigator.of(context).pushReplacement(
-                                              MaterialPageRoute(builder: (context) => const LevelScreen()),
-                                            );
+                                        ElevatedButton.icon(
+                                          onPressed: () {
+                                            gameProvider.startLevel(gameProvider.currentLevel);
+                                            Navigator.of(context).pop();
                                           },
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 32,
-                                              vertical: 16,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white,
-                                              border: Border.all(
-                                                color: const Color(0xFF185A9D),
-                                                width: 2,
-                                              ),
-                                              borderRadius: BorderRadius.circular(30),
-                                            ),
-                                            child: const Text(
-                                              'LEVEL SELECT',
-                                              style: TextStyle(
-                                                fontSize: 20,
-                                                fontWeight: FontWeight.bold,
-                                                color: Color(0xFF185A9D),
-                                                letterSpacing: 2,
-                                              ),
-                                            ),
+                                          icon: const Icon(Icons.refresh_rounded),
+                                          label: const Text('RETRY LEVEL'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.blue,
+                                            foregroundColor: Colors.white,
+                                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        OutlinedButton.icon(
+                                          onPressed: () => Navigator.of(context).pop(),
+                                          icon: const Icon(Icons.grid_view_rounded),
+                                          label: const Text('LEVEL SELECT'),
+                                          style: OutlinedButton.styleFrom(
+                                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                                           ),
                                         ),
                                       ],

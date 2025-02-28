@@ -143,10 +143,9 @@ class _IntroScreenState extends State<IntroScreen>
                       itemBuilder: (context, index) {
                         return AnimatedBlock(
                           block: Block(
-                            id: index,
-                            color: gridColors[index],
                             row: index ~/ 3,
                             col: index % 3,
+                            color: gridColors[index],
                           ),
                           onTap: () {},
                         );

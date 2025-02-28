@@ -81,26 +81,39 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => GameProvider(audioService: _audioService),
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: 'AI Blocker',
-        theme: ThemeData(
-          primaryColor: const Color(0xFF43CEA2),
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF43CEA2),
-            primary: const Color(0xFF43CEA2),
-            secondary: const Color(0xFF185A9D),
-          ),
-          scaffoldBackgroundColor: Colors.transparent,
-          fontFamily: GoogleFonts.montserrat().fontFamily,
-          textTheme: GoogleFonts.montserratTextTheme(
-            Theme.of(context).textTheme,
+    return MultiProvider(
+      providers: [
+        Provider<AudioService>(
+          create: (_) => _audioService,
+        ),
+        ChangeNotifierProvider<GameProvider>(
+          create: (context) => GameProvider(
+            audioService: context.read<AudioService>(),
           ),
         ),
-        home: !_isInitialized ? const LoadingScreen() : const IntroScreen(),
-      ),
+      ],
+      builder: (context, child) {
+        final gameProvider = Provider.of<GameProvider>(context);
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Block Blast',
+          navigatorKey: gameProvider.navigatorKey,
+          theme: ThemeData(
+            primaryColor: const Color(0xFF43CEA2),
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFF43CEA2),
+              primary: const Color(0xFF43CEA2),
+              secondary: const Color(0xFF185A9D),
+            ),
+            scaffoldBackgroundColor: Colors.transparent,
+            fontFamily: GoogleFonts.montserrat().fontFamily,
+            textTheme: GoogleFonts.montserratTextTheme(
+              Theme.of(context).textTheme,
+            ),
+          ),
+          home: !_isInitialized ? const LoadingScreen() : const IntroScreen(),
+        );
+      },
     );
   }
 }

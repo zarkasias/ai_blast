@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
 import '../widgets/settings_button.dart';
+import '../models/level_config.dart';
 import 'game_screen.dart';
 import 'intro_screen.dart';
 
@@ -53,7 +54,7 @@ class LevelScreen extends StatelessWidget {
                           padding: const EdgeInsets.only(bottom: 8.0, top: 16.0),
                           child: Container(
                             color: const Color.fromARGB(180, 255, 255, 255), 
-                            height: 70, 
+                            height: 100, 
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -70,25 +71,61 @@ class LevelScreen extends StatelessWidget {
                                   color: Color(0xFF185A9D),
                                   size: 28,
                                 ),
-                                
-                                 
                               ),
-                              const Expanded(
-                                child: Text(
-                                  'SELECT LEVEL',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 28,
-                                    fontFamily: 'Montserrat',
-                                    fontWeight: FontWeight.w900,
-                                    color: Color(0xFF185A9D),
-                                    letterSpacing: 2,
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Text(
+                                    'SELECT LEVEL',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 26,
+                                      fontFamily: 'Montserrat',
+                                      fontWeight: FontWeight.w900,
+                                      color: Color(0xFF185A9D),
+                                      letterSpacing: 2,
+                                    ),
                                   ),
-                                ),
+                                  const SizedBox(height: 4), // Small gap between title and coin counter
+                                  // Coin counter
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFFB75E).withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: const Color(0xFFFFB75E),
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.monetization_on_rounded,
+                                          color: Color(0xFFFFB75E),
+                                          size: 24,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          '${gameProvider.totalCoins}',
+                                          style: const TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF185A9D),
+                                            fontFamily: 'Montserrat',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ]
                               ),
+                              
                               const SettingsButton(
-                        color: Color.fromARGB(255, 1, 123, 245),
-                      ),
+                                color: Color.fromARGB(255, 1, 123, 245),
+                              ),
                               // Placeholder to balance the back button and settings
                             ],
                           ),
@@ -107,9 +144,10 @@ class LevelScreen extends StatelessWidget {
                               crossAxisSpacing: 16,
                               mainAxisSpacing: 16,
                             ),
-                            itemCount: GameProvider.levelTargets.length,
+                            itemCount: LevelConfigs.levels.length,
                             itemBuilder: (context, index) {
                               final level = index + 1;
+                              final levelConfig = LevelConfigs.levels[index];
                               final isUnlocked = level <= gameProvider.highestUnlockedLevel;
                               final isCompleted = level < gameProvider.highestUnlockedLevel;
                               
@@ -155,23 +193,38 @@ class LevelScreen extends StatelessWidget {
                                       const SizedBox(height: 8),
                                       // Target score
                                       Text(
-                                        'Target: ${GameProvider.levelTargets[level]}',
+                                        'Target: ${levelConfig.targetScore}',
                                         style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w600,
                                           color: isUnlocked ? const Color(0xFF43CEA2) : const Color.fromARGB(255, 244, 241, 241),
                                         ),
                                       ),
+                                      const SizedBox(height: 8),
+                                      // Level objectives
+                                      if (levelConfig.objectives.length > 1)
+                                        Text(
+                                          '${levelConfig.objectives.length} Objectives',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                            color: isUnlocked ? Colors.orange : const Color.fromARGB(255, 244, 241, 241),
+                                          ),
+                                        ),
                                       const SizedBox(height: 12),
                                       // Level status icon
                                       Icon(
-                                        isCompleted ? Icons.star_rounded :
-                                        isUnlocked ? Icons.play_circle_fill_rounded :
-                                        Icons.lock_rounded,
+                                        isCompleted
+                                            ? Icons.star_rounded
+                                            : isUnlocked
+                                                ? Icons.play_circle_fill_rounded
+                                                : Icons.lock_rounded,
+                                        color: isCompleted
+                                            ? const Color(0xFFFFB75E)
+                                            : isUnlocked
+                                                ? const Color(0xFF43CEA2)
+                                                : const Color.fromARGB(255, 244, 241, 241),
                                         size: 32,
-                                        color: isCompleted ? Colors.amber :
-                                               isUnlocked ? const Color(0xFF43CEA2) :
-                                               const Color.fromARGB(255, 221, 220, 220),
                                       ),
                                     ],
                                   ),
