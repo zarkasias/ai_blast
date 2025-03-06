@@ -41,29 +41,20 @@ class _MyAppState extends State<MyApp> {
     try {
       // Clear saved progress
       final prefs = await SharedPreferences.getInstance();
-      await prefs.clear(); // This will clear all saved preferences
-      debugPrint('MyApp: Cleared saved progress');
-      
-      // Initialize audio service first
-      debugPrint('MyApp: Initializing audio service...');
+      await prefs.clear(); 
       await _audioService.initialize();
-      debugPrint('MyApp: Audio service initialized successfully');
-      
-      // Add a small delay to simulate asset loading
       await Future.delayed(const Duration(milliseconds: 1000));
       
       setState(() {
         _isInitialized = true;
       });
       
-      // Start background music after initialization if enabled
       if (_audioService.isMusicEnabled) {
         await _audioService.startBackgroundMusic();
       }
     } catch (e) {
-      debugPrint('MyApp: Error during initialization: $e');
       setState(() {
-        _isInitialized = true; // Still set to true to show the game even if audio fails
+        _isInitialized = true;
       });
     }
   }
@@ -97,7 +88,7 @@ class _MyAppState extends State<MyApp> {
         final gameProvider = Provider.of<GameProvider>(context);
         return MaterialApp(
           debugShowCheckedModeBanner: false,
-          title: 'Block Blast',
+          title: 'AI Blocker',
           navigatorKey: gameProvider.navigatorKey,
           theme: ThemeData(
             primaryColor: const Color(0xFF43CEA2),
