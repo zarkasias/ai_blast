@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/level_config.dart';
-import '../providers/game_provider.dart';
 import 'level_screen.dart';
 
 class LevelCompleteScreen extends StatefulWidget {

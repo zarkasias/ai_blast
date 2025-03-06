@@ -53,7 +53,7 @@ class Block {
   // Getters for block types
   bool get isBomb => type == BlockType.bomb;
   bool get isRocket => type == BlockType.rocket;
-  bool get isRainbow => type == BlockType.rainbow;
+  bool get isLightning => type == BlockType.rainbow;
   bool get isLocked => type == BlockType.locked;
   bool get hasIce => iceLayer > 0;
   bool get isStone => type == BlockType.stone;
@@ -374,218 +374,237 @@ class GameProvider extends ChangeNotifier {
 
     final block = grid[row][col]!;
     
-    // Special handling for bomb blocks - they activate immediately on tap
-    if (block.isBomb) {
-      _handleBombBlock(block);
+    // Handle special blocks immediately
+    if (block.isBomb || block.isRocket || block.isPortal) {
+      _handleSpecialBlock(block);
       return;
     }
 
     // Normal block matching logic
     final List<Point<int>> matchingGroup = findMatchingGroup(row, col);
-    if (matchingGroup.isEmpty) {
-      clearSelection();
-      notifyListeners();
-      return;
-    }
+    if (matchingGroup.isEmpty) return;
 
-    // Optimize selection by updating all blocks at once
-    selectedBlocks = matchingGroup.map((point) {
-      final block = grid[point.x][point.y]!;
-      grid[point.x][point.y] = block.copyWith(isSelected: true);
-      return block;
-    }).toList();
-
-    _audioService.playSelectSound();
-    
-    // Use Future.microtask to defer heavy operations
-    Future.microtask(() {
-      removeSelectedBlocks();
-      notifyListeners();
-    });
-  }
-
-  void removeSelectedBlocks() {
-    if (selectedBlocks.isEmpty) return;
-
-    final block = selectedBlocks.first;
-    int removedBlocks = 0;
-    int iceBlocksBroken = 0;
-    
-    // Play sound effect before heavy operations
+    // We have a valid match
     _audioService.playMatchSound();
-    
-    // Batch all grid updates
-    List<Future<void>> updateOperations = [];
-    
-    if (block.isBomb) {
-      // Bomb block logic - remove all blocks of the same color
-      final bombColor = block.color;
-      for (int row = 0; row < currentLevelConfig.gridRows; row++) {
-        for (int col = 0; col < currentLevelConfig.gridCols; col++) {
-          final currentBlock = grid[row][col];
-          if (currentBlock != null && currentBlock.color == bombColor) {
-            updateOperations.add(Future(() {
-              if (currentBlock.hasIce) {
-                final newIceLayer = currentBlock.iceLayer - 1;
-                if (newIceLayer <= 0) {
-                  grid[row][col] = null;
-                  iceBlocksBroken++;
-                } else {
-                  grid[row][col] = currentBlock.copyWith(iceLayer: newIceLayer);
-                }
-              } else {
-                grid[row][col] = null;
-              }
-              removedBlocks++;
-            }));
-          }
-        }
-      }
-      
-      // Update bomb objective
-      incrementObjectiveProgress(LevelObjective.matchBombs);
-    } else {
-      // Normal block removal logic
-      if (selectedBlocks.length < currentLevelConfig.minMatchSize) return;
-
-      // Process portal blocks if any
-      final portalBlocks = selectedBlocks.where((b) => b.isPortal).toList();
-      if (portalBlocks.isNotEmpty) {
-        for (final portalBlock in portalBlocks) {
-          final connectedPortal = findConnectedPortal(portalBlock);
-          if (connectedPortal != null) {
-            addMatchingBlocksAroundPortal(connectedPortal);
-          }
-        }
-      }
-
-      // Remove selected blocks
-      for (var block in selectedBlocks) {
-        updateOperations.add(Future(() {
-          if (block.hasIce) {
-            final newIceLayer = block.iceLayer - 1;
-            if (newIceLayer <= 0) {
-              grid[block.row][block.col] = null;
-              iceBlocksBroken++;
-            } else {
-              grid[block.row][block.col] = block.copyWith(iceLayer: newIceLayer);
-            }
-          } else {
-            grid[block.row][block.col] = null;
-          }
-          removedBlocks++;
-        }));
-      }
-    }
-
-    // Execute all grid updates
-    Future.wait(updateOperations).then((_) {
-      // Update objectives
-      incrementObjectiveProgress(LevelObjective.clearBlocks, removedBlocks);
-      if (iceBlocksBroken > 0) {
-        incrementObjectiveProgress(LevelObjective.breakIce, iceBlocksBroken);
-      }
-
-      // Calculate score
-      int multiplier = selectedBlocks.length - (currentLevelConfig.minMatchSize - 1);
-      int basePoints = 10;
-      int levelBonus = currentLevel;
-      int specialBlockBonus = block.isBomb || block.isRocket || block.isRainbow ? 2 : 1;
-      score += basePoints * multiplier * levelBonus * specialBlockBonus;
-      
-      // Update score objective
-      updateObjectiveProgress(LevelObjective.score, score);
-
-      selectedBlocks.clear();
-      movesWithoutMatch = 0;
-      
-      // Decrement moves left
-      movesLeft--;
-      
-      // Apply gravity and fill empty spaces with slight delays
-      Future.microtask(() {
-        applyGravity();
-        Future.delayed(const Duration(milliseconds: 50), () {
-          fillEmptySpaces();
-          Future.delayed(const Duration(milliseconds: 50), () {
-            checkGameState();
-            notifyListeners();
-          });
-        });
-      });
-    });
+    _processMatch(matchingGroup);
   }
 
-  void _handleBombBlock(Block block) {
-    clearSelection();
-    grid[block.row][block.col] = block.copyWith(isSelected: true);
-    selectedBlocks = [block];
-    
-    // Play sound effect before heavy operations
-    _audioService.playBurstSound();
-    
-    // Batch all grid updates
-    List<Future<void>> updateOperations = [];
-    int removedBlocks = 0;
+  void _handleSpecialBlock(Block block) {
+    if (block.isBomb) {
+      // Quick check for matching colors
+      bool hasMatchingBlocks = false;
+      final bombColor = block.color;
+      for (final row in grid) {
+        if (row.any((b) => b != null && b.color == bombColor && b != block)) {
+          hasMatchingBlocks = true;
+          break;
+        }
+      }
+      
+      if (hasMatchingBlocks) {
+        _audioService.playBurstSound();
+        _processBombMatch(block);
+      }
+    } else if (block.isRocket) {
+      // Quick check for blocks in row
+      if (grid[block.row].any((b) => b != null && b != block)) {
+        _audioService.playBurstSound();
+        _processRocketMatch(block);
+      }
+    } else if (block.isPortal) {
+      final connectedPortal = findConnectedPortal(block);
+      if (connectedPortal != null) {
+        _audioService.playBurstSound();
+        _processPortalMatch(block, connectedPortal);
+      }
+    }
+  }
+
+  void _processMatch(List<Point<int>> matchingGroup) {
     int iceBlocksBroken = 0;
     
-    final bombColor = block.color;
+    // Remove matching blocks and handle ice
+    for (var point in matchingGroup) {
+      final block = grid[point.x][point.y];
+      if (block == null) continue;
+      
+      if (block.hasIce) {
+        final newIceLayer = block.iceLayer - 1;
+        if (newIceLayer <= 0) {
+          grid[point.x][point.y] = null;
+          iceBlocksBroken++;
+        } else {
+          grid[point.x][point.y] = block.copyWith(iceLayer: newIceLayer);
+        }
+      } else {
+        grid[point.x][point.y] = null;
+      }
+    }
     
+    // Update score and objectives in batch
+    final points = matchingGroup.length;
+    final multiplier = points - (currentLevelConfig.minMatchSize - 1);
+    score += 10 * multiplier * currentLevel;
+    
+    if (iceBlocksBroken > 0) {
+      incrementObjectiveProgress(LevelObjective.breakIce, iceBlocksBroken);
+    }
+    
+    _updateGameState(points);
+  }
+
+  void _processBombMatch(Block bomb) {
+    int removedBlocks = 0;
+    int iceBlocksBroken = 0;
+    final bombColor = bomb.color;
+    
+    // Single pass through grid with optimized ice handling
     for (int r = 0; r < currentLevelConfig.gridRows; r++) {
       for (int c = 0; c < currentLevelConfig.gridCols; c++) {
         final currentBlock = grid[r][c];
-        if (currentBlock != null && currentBlock.color == bombColor) {
-          updateOperations.add(Future(() {
-            if (currentBlock.hasIce) {
-              final newIceLayer = currentBlock.iceLayer - 1;
-              if (newIceLayer <= 0) {
-                grid[r][c] = null;
-                iceBlocksBroken++;
-              } else {
-                grid[r][c] = currentBlock.copyWith(iceLayer: newIceLayer);
-              }
-            } else {
+        if (currentBlock?.color == bombColor) {
+          if (currentBlock!.hasIce) {
+            final newIceLayer = currentBlock.iceLayer - 1;
+            if (newIceLayer <= 0) {
               grid[r][c] = null;
+              iceBlocksBroken++;
+              removedBlocks++;
+            } else {
+              grid[r][c] = currentBlock.copyWith(iceLayer: newIceLayer);
             }
+          } else {
+            grid[r][c] = null;
             removedBlocks++;
-          }));
+          }
         }
       }
     }
     
-    // Execute all grid updates
-    Future.wait(updateOperations).then((_) {
-      // Update objectives and score
-      incrementObjectiveProgress(LevelObjective.clearBlocks, removedBlocks);
-      incrementObjectiveProgress(LevelObjective.matchBombs);
+    // Update score
+    score += removedBlocks * 20 * currentLevel * 2;
+    
+    // Update objectives
+    if (iceBlocksBroken > 0) {
+      incrementObjectiveProgress(LevelObjective.breakIce, iceBlocksBroken);
+    }
+    incrementObjectiveProgress(LevelObjective.matchBombs);
+    
+    _updateGameState(removedBlocks);
+  }
+
+  void _processRocketMatch(Block rocket) {
+    int removedBlocks = 0;
+    int iceBlocksBroken = 0;
+    
+    // Single pass for row with ice handling
+    for (int i = 0; i < currentLevelConfig.gridCols; i++) {
+      final currentBlock = grid[rocket.row][i];
+      if (currentBlock != null) {
+        if (currentBlock.hasIce) {
+          final newIceLayer = currentBlock.iceLayer - 1;
+          if (newIceLayer <= 0) {
+            grid[rocket.row][i] = null;
+            iceBlocksBroken++;
+            removedBlocks++;
+          } else {
+            grid[rocket.row][i] = currentBlock.copyWith(iceLayer: newIceLayer);
+          }
+        } else {
+          grid[rocket.row][i] = null;
+          removedBlocks++;
+        }
+      }
+    }
+    
+    // Update score and objectives
+    score += removedBlocks * 20 * currentLevel;
+    if (iceBlocksBroken > 0) {
+      incrementObjectiveProgress(LevelObjective.breakIce, iceBlocksBroken);
+    }
+    incrementObjectiveProgress(LevelObjective.matchRockets);
+    
+    _updateGameState(removedBlocks);
+  }
+
+  void _processPortalMatch(Block portal, Block connectedPortal) {
+    final matchingBlocks = _getPortalMatchingBlocks(portal, connectedPortal);
+    
+    if (matchingBlocks.length >= currentLevelConfig.minMatchSize) {
+      int iceBlocksBroken = 0;
+      int removedBlocks = 0;
+      
+      // Process blocks with ice handling
+      for (var block in matchingBlocks) {
+        if (block.hasIce) {
+          final newIceLayer = block.iceLayer - 1;
+          if (newIceLayer <= 0) {
+            grid[block.row][block.col] = null;
+            iceBlocksBroken++;
+            removedBlocks++;
+          } else {
+            grid[block.row][block.col] = block.copyWith(iceLayer: newIceLayer);
+          }
+        } else {
+          grid[block.row][block.col] = null;
+          removedBlocks++;
+        }
+      }
+      
+      // Update score and objectives
+      score += removedBlocks * 15 * currentLevel;
       if (iceBlocksBroken > 0) {
         incrementObjectiveProgress(LevelObjective.breakIce, iceBlocksBroken);
       }
+      incrementObjectiveProgress(LevelObjective.usePortals);
       
-      // Calculate score with bomb bonus
-      score += removedBlocks * 20 * currentLevel * 2;
-      updateObjectiveProgress(LevelObjective.score, score);
-      
-      // Clear selection and update game state
-      selectedBlocks.clear();
-      movesLeft--;
-      movesWithoutMatch = 0;
-      
-      // Apply gravity and fill empty spaces with slight delays
-      Future.microtask(() {
-        applyGravity();
-        Future.delayed(const Duration(milliseconds: 50), () {
-          fillEmptySpaces();
-          Future.delayed(const Duration(milliseconds: 50), () {
-            checkGameState();
-            notifyListeners();
-          });
-        });
-      });
-    });
+      _updateGameState(removedBlocks);
+    }
+  }
+
+  List<Block> _getPortalMatchingBlocks(Block portal, Block connectedPortal) {
+    final Set<Block> matchingBlocks = {portal, connectedPortal};
+    final targetColor = portal.color;
+    
+    // Check blocks around both portals
+    for (final portalBlock in [portal, connectedPortal]) {
+      for (final offset in [const Point(-1, 0), const Point(1, 0), const Point(0, -1), const Point(0, 1)]) {
+        final newRow = portalBlock.row + offset.x;
+        final newCol = portalBlock.col + offset.y;
+        
+        if (newRow >= 0 && newRow < currentLevelConfig.gridRows &&
+            newCol >= 0 && newCol < currentLevelConfig.gridCols) {
+          final block = grid[newRow][newCol];
+          if (block != null && block.color == targetColor) {
+            matchingBlocks.add(block);
+          }
+        }
+      }
+    }
+    
+    return matchingBlocks.toList();
+  }
+
+  void _updateGameState(int removedBlocks) {
+    // Update clear blocks objective
+    incrementObjectiveProgress(LevelObjective.clearBlocks, removedBlocks);
+    updateObjectiveProgress(LevelObjective.score, score);
+    
+    // Update game state
+    movesLeft--;
+    movesWithoutMatch = 0;
+    
+    // Apply gravity and fill spaces
+    applyGravity();
+    fillEmptySpaces();
+    checkGameState();
+    
+    // Single notification for all changes
+    notifyListeners();
   }
 
   void applyGravity() {
+    bool anyBlockMoved = false;
+    
     for (int col = 0; col < currentLevelConfig.gridCols; col++) {
       int writePos = currentLevelConfig.gridRows - 1;
       
@@ -595,7 +614,6 @@ class GameProvider extends ChangeNotifier {
       }
       
       for (int row = currentLevelConfig.gridRows - 1; row >= 0; row--) {
-        // Skip blocked cells
         if (currentLevelConfig.blockedCells?.contains(Point(row, col)) ?? false) {
           continue;
         }
@@ -604,8 +622,8 @@ class GameProvider extends ChangeNotifier {
           if (writePos != row) {
             grid[writePos][col] = grid[row][col]!.copyWith(row: writePos);
             grid[row][col] = null;
+            anyBlockMoved = true;
           }
-          // Find next valid write position
           writePos--;
           while (writePos >= 0 && (currentLevelConfig.blockedCells?.contains(Point(writePos, col)) ?? false)) {
             writePos--;
@@ -613,36 +631,55 @@ class GameProvider extends ChangeNotifier {
         }
       }
     }
-    notifyListeners();
+    
+    // Only notify if blocks actually moved
+    if (anyBlockMoved) {
+      notifyListeners();
+    }
   }
 
   void fillEmptySpaces() {
+    bool anySpaceFilled = false;
+    
     for (int col = 0; col < currentLevelConfig.gridCols; col++) {
       for (int row = currentLevelConfig.gridRows - 1; row >= 0; row--) {
-        // Skip if this is a blocked cell
         if (currentLevelConfig.blockedCells?.contains(Point(row, col)) ?? false) {
           continue;
         }
         if (grid[row][col] == null) {
           grid[row][col] = createBlock(row, col);
+          anySpaceFilled = true;
         }
       }
     }
-    notifyListeners();
+    
+    // Only notify if spaces were actually filled
+    if (anySpaceFilled) {
+      notifyListeners();
+    }
   }
 
   bool hasMatchingNeighbors(int row, int col) {
     if (grid[row][col] == null) return false;
-    final Color color = grid[row][col]!.color;
+    final block = grid[row][col]!;
+    if (block.isStone || (block.hasIce && block.iceLayer > 1)) return false;
+    
+    final Color color = block.color;
     
     // Check horizontal groups
     int horizontalCount = 1;
     // Check left
-    for (int i = col - 1; i >= 0 && grid[row][i]?.color == color; i--) {
+    for (int i = col - 1; i >= 0; i--) {
+      final neighbor = grid[row][i];
+      if (neighbor == null || neighbor.color != color || 
+          neighbor.isStone || (neighbor.hasIce && neighbor.iceLayer > 1)) break;
       horizontalCount++;
     }
     // Check right
-    for (int i = col + 1; i < currentLevelConfig.gridCols && grid[row][i]?.color == color; i++) {
+    for (int i = col + 1; i < currentLevelConfig.gridCols; i++) {
+      final neighbor = grid[row][i];
+      if (neighbor == null || neighbor.color != color || 
+          neighbor.isStone || (neighbor.hasIce && neighbor.iceLayer > 1)) break;
       horizontalCount++;
     }
     if (horizontalCount >= 3) return true;
@@ -650,11 +687,17 @@ class GameProvider extends ChangeNotifier {
     // Check vertical groups
     int verticalCount = 1;
     // Check up
-    for (int i = row - 1; i >= 0 && grid[i][col]?.color == color; i--) {
+    for (int i = row - 1; i >= 0; i--) {
+      final neighbor = grid[i][col];
+      if (neighbor == null || neighbor.color != color || 
+          neighbor.isStone || (neighbor.hasIce && neighbor.iceLayer > 1)) break;
       verticalCount++;
     }
     // Check down
-    for (int i = row + 1; i < currentLevelConfig.gridRows && grid[i][col]?.color == color; i++) {
+    for (int i = row + 1; i < currentLevelConfig.gridRows; i++) {
+      final neighbor = grid[i][col];
+      if (neighbor == null || neighbor.color != color || 
+          neighbor.isStone || (neighbor.hasIce && neighbor.iceLayer > 1)) break;
       verticalCount++;
     }
     if (verticalCount >= 3) return true;
@@ -753,33 +796,6 @@ class GameProvider extends ChangeNotifier {
     return null;
   }
 
-  void addMatchingBlocksAroundPortal(Block portalBlock) {
-    final directions = [
-      [-1, 0], // up
-      [1, 0],  // down
-      [0, -1], // left
-      [0, 1],  // right
-    ];
-
-    final targetColor = selectedBlocks.first.color;
-
-    for (final dir in directions) {
-      final newRow = portalBlock.row + dir[0];
-      final newCol = portalBlock.col + dir[1];
-
-      if (newRow >= 0 && newRow < currentLevelConfig.gridRows &&
-          newCol >= 0 && newCol < currentLevelConfig.gridCols) {
-        final block = grid[newRow][newCol];
-        if (block != null && 
-            block.color == targetColor && 
-            !selectedBlocks.contains(block)) {
-          selectedBlocks.add(block);
-          grid[newRow][newCol] = block.copyWith(isSelected: true);
-        }
-      }
-    }
-  }
-
   @override
   void dispose() {
     _audioService.dispose();
@@ -791,11 +807,13 @@ class GameProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _totalCoins = prefs.getInt('total_coins') ?? 0;
     highestUnlockedLevel = prefs.getInt('highest_level') ?? 1;
+    debugPrint('Loaded highest level: $highestUnlockedLevel');
     notifyListeners();
   }
 
   // Update completeLevel to handle coins asynchronously and show completion screen
   Future<void> completeLevel() async {
+    if (isLevelComplete) return; // Prevent multiple completions
     isLevelComplete = true;
     
     // Award coins from level rewards
@@ -806,7 +824,9 @@ class GameProvider extends ChangeNotifier {
     // Update highest unlocked level if needed
     if (currentLevel >= highestUnlockedLevel) {
       highestUnlockedLevel = currentLevel + 1;
-      _saveProgress();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('highest_level', highestUnlockedLevel);
+      debugPrint('Saved highest level: $highestUnlockedLevel');
     }
     
     // Show level complete screen

@@ -6,6 +6,7 @@ import 'providers/game_provider.dart';
 import 'screens/intro_screen.dart';
 import 'services/audio_service.dart';
 import 'widgets/loading_screen.dart';
+import 'widgets/custom_cursor.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -111,6 +112,7 @@ class _MyAppState extends State<MyApp> {
               Theme.of(context).textTheme,
             ),
           ),
+          builder: (context, child) => CustomCursor(child: child ?? const SizedBox()),
           home: !_isInitialized ? const LoadingScreen() : const IntroScreen(),
         );
       },

@@ -16,7 +16,8 @@ class AnimatedBlock extends StatefulWidget {
   State<AnimatedBlock> createState() => _AnimatedBlockState();
 }
 
-class _AnimatedBlockState extends State<AnimatedBlock> with SingleTickerProviderStateMixin {
+class _AnimatedBlockState extends State<AnimatedBlock>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
@@ -108,36 +109,40 @@ class _AnimatedBlockState extends State<AnimatedBlock> with SingleTickerProvider
               // Special block overlays
               if (widget.block.isBomb)
                 Center(
-                  child: Icon(
-                    Icons.stars_rounded,
-                    color: widget.block.color == const Color(0xFFFFB75E) ? const Color(0xFF185A9D) : const Color(0xFFFFB75E),
-                    size: 24,
+                  child: Image.asset(
+                    widget.block.color == const Color(0xFFFFB75E)
+                        ? 'assets/icons/bomb/bomb_blue_64px.png'
+                        : 'assets/icons/bomb/bomb_gold_64px.png',
+                    width: 24,
+                    height: 24,
                   ),
                 )
               else if (widget.block.isRocket)
                 Center(
-                  child: Icon(
-                    Icons.rocket_launch_rounded,
-                    color: widget.block.color == const Color(0xFFFFB75E) ? const Color(0xFF185A9D) : const Color(0xFFFFB75E),
-                    size: 24,
+                  child: Image.asset(
+                    'assets/icons/rocket/rocket_64px.png',
+                    width: 24,
+                    height: 24,
                   ),
                 )
-              else if (widget.block.isRainbow)
+              else if (widget.block.isLightning)
                 Center(
-                  child: Icon(
-                    Icons.auto_awesome_rounded,
-                    color: widget.block.color == const Color(0xFFFFB75E) ? const Color(0xFF185A9D) : const Color(0xFFFFB75E),
-                    size: 24,
+                  child: Image.asset(
+                    widget.block.color == const Color(0xFFFFB75E)
+                        ? 'assets/icons/lightning/blue_lightning_64px.png'
+                        : 'assets/icons/lightning/gold_lightning_64px.png',
+                    width: 24,
+                    height: 24,
                   ),
                 )
               else if (widget.block.isPortal)
                 Stack(
                   children: [
                     Center(
-                      child: Icon(
-                        Icons.blur_circular_rounded,
-                        color: widget.block.color == const Color(0xFFFFB75E) ? const Color(0xFF185A9D) : const Color(0xFFFFB75E),
-                        size: 24,
+                      child: Image.asset(
+                        'assets/icons/portal/portal_purple_64px.png',
+                        width: 24,
+                        height: 24,
                       ),
                     ),
                     Container(
@@ -171,17 +176,22 @@ class _AnimatedBlockState extends State<AnimatedBlock> with SingleTickerProvider
                         ),
                       ),
                     ),
-                    // Ice cracks (if one layer remaining)
-                    if (widget.block.iceLayer == 1)
-                      CustomPaint(
-                        painter: IceCrackPainter(),
-                      ),
-                    // Ice crystal icon
-                    const Center(
-                      child: Icon(
-                        Icons.ac_unit_rounded,
-                        color: Colors.white,
-                        size: 24,
+                    // Ice icon - switches between outline and filled based on ice layer
+                    Center(
+                      child: Image.asset(
+                        widget.block.iceLayer == 2 
+                          ? 'assets/icons/ice/ice_outline_64px.png'
+                          : 'assets/icons/ice/ice_64px.png',
+                        width: 24,
+                        height: 24,
+                        errorBuilder: (context, error, stackTrace) {
+                          debugPrint('Error loading ice icon: $error');
+                          return const Icon(
+                            Icons.ac_unit_rounded,
+                            color: Colors.white,
+                            size: 24,
+                          );
+                        },
                       ),
                     ),
                   ],
@@ -206,34 +216,3 @@ class _AnimatedBlockState extends State<AnimatedBlock> with SingleTickerProvider
     );
   }
 }
-
-class IceCrackPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withOpacity(0.7)
-      ..strokeWidth = 1
-      ..style = PaintingStyle.stroke;
-
-    final path = Path();
-    
-    // Draw random cracks
-    final random = Random();
-    for (int i = 0; i < 3; i++) {
-      final startX = random.nextDouble() * size.width;
-      final startY = random.nextDouble() * size.height;
-      path.moveTo(startX, startY);
-      
-      for (int j = 0; j < 3; j++) {
-        final endX = startX + (random.nextDouble() - 0.5) * 20;
-        final endY = startY + (random.nextDouble() - 0.5) * 20;
-        path.lineTo(endX, endY);
-      }
-    }
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-} 

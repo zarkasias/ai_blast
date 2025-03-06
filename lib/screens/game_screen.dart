@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
-import '../models/level_config.dart';
 import '../widgets/game_grid.dart';
 import '../widgets/tutorial_overlay.dart';
 import '../widgets/animated_score.dart';
@@ -236,10 +235,10 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                                                 _showTutorial = true;
                                               });
                                             },
-                                            icon: const Icon(
-                                              Icons.help_outline_rounded,
-                                              color: Color(0xFF185A9D),
-                                              size: 28,
+                                            icon: Image.asset(
+                                              'assets/icons/info/info_64px.png',
+                                              width: 28,
+                                              height: 28,
                                             ),
                                           ),
                                           // Settings Button
@@ -394,7 +393,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                                           isUnlocked: true,
                                         ),
                                       ),
-                                    Row(
+                                    Column(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         ElevatedButton.icon(
@@ -410,9 +409,13 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                                             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                                           ),
                                         ),
-                                        const SizedBox(width: 16),
+                                        const SizedBox(height: 12),
                                         OutlinedButton.icon(
-                                          onPressed: () => Navigator.of(context).pop(),
+                                          onPressed: () {
+                                            Navigator.of(context).pushReplacement(
+                                              MaterialPageRoute(builder: (context) => const LevelScreen()),
+                                            );
+                                          },
                                           icon: const Icon(Icons.grid_view_rounded),
                                           label: const Text('LEVEL SELECT'),
                                           style: OutlinedButton.styleFrom(

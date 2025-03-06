@@ -28,7 +28,7 @@ class LevelData {
       createLevel(
         levelNumber: 1,
         targetScore: 1000,
-        moveLimit: 15,
+        moveLimit: 18,
         availableColors: basicColors.sublist(0, 3),
         objectives: const [LevelObjective.score],
         objectiveTargets: const {LevelObjective.score: 1000},
@@ -38,74 +38,74 @@ class LevelData {
         rewards: const {'coins': 100},
         // Heart shape using blocked cells
         blockedCells: const [
-          Point(0, 0), Point(0, 1), Point(0, 6), Point(0, 7),
-          Point(1, 0), Point(1, 7),
-          Point(6, 7), Point(6, 0),
-          Point(7, 0), Point(7, 1), Point(7, 6), Point(7, 7),
-        ],
-        initialLayout: const [
-          [BlockType.stone, BlockType.stone, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.stone, BlockType.stone],
-          [BlockType.stone, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.stone, BlockType.stone],
-          [BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal],
-          [BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal],
-          [BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal],
-          [BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal],
-          [BlockType.stone, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.stone],
-          [BlockType.stone, BlockType.stone, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.stone, BlockType.stone],
+          Point(0, 0), Point(0, 7),
+          Point(7, 0), Point(7, 7),
         ],
       ),
       
-      // Level 2: Star pattern with ice blocks
+      // Level 2: Gentle introduction to ice blocks
       createLevel(
         levelNumber: 2,
+        targetScore: 1500,
+        moveLimit: 20,
+        availableColors: basicColors.sublist(0, 3),
+        objectives: const [
+          LevelObjective.score,
+          LevelObjective.breakIce,
+        ],
+        objectiveTargets: const {
+          LevelObjective.score: 1500,
+          LevelObjective.breakIce: 3,
+        },
+        iceProbability: 0.10,
+        bombProbability: 0.0,
+        hints: const [
+          "Ice blocks need two matches to break completely",
+          "Clear ice blocks to reach your target score",
+        ],
+        rewards: const {'coins': 150},
+        // Simplified layout with fewer blocked cells
+        blockedCells: const [
+          Point(0, 0), Point(0, 7),
+          Point(7, 0), Point(7, 7),
+        ],
+        initialLayout: const [
+          [BlockType.normal, BlockType.normal, BlockType.normal, BlockType.ice, BlockType.ice, BlockType.normal, BlockType.normal, BlockType.normal],
+          [BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal],
+          [BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal],
+          [BlockType.ice, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.ice],
+          [BlockType.ice, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.ice],
+          [BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal],
+          [BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal],
+          [BlockType.normal, BlockType.normal, BlockType.normal, BlockType.ice, BlockType.ice, BlockType.normal, BlockType.normal, BlockType.normal],
+        ],
+      ),
+      
+      // Level 3: Now introduce special blocks
+      createLevel(
+        levelNumber: 3,
         targetScore: 2000,
         moveLimit: 20,
         availableColors: basicColors.sublist(0, 4),
         objectives: const [
           LevelObjective.score,
-          LevelObjective.breakIce,
-          LevelObjective.createSpecials,
+          LevelObjective.matchBombs,
+          LevelObjective.clearBlocks,
         ],
         objectiveTargets: const {
           LevelObjective.score: 2000,
-          LevelObjective.breakIce: 5,
-          LevelObjective.createSpecials: 2,
+          LevelObjective.matchBombs: 3,
+          LevelObjective.clearBlocks: 30,
         },
-        iceProbability: 0.15,
-        bombProbability: 0.05,
-        hints: const [
-          "Ice blocks need two matches to break completely",
-          "Match 4 or more blocks to create special blocks",
-        ],
-        rewards: const {'coins': 150},
-        // Star pattern using blocked cells
-        blockedCells: const [
-          Point(0, 0), Point(0, 1), Point(0, 6), Point(0, 7),
-          Point(1, 0), Point(1, 1), Point(1, 6), Point(1, 7),
-          Point(3, 3), Point(3, 4),
-          Point(4, 3), Point(4, 4),
-          Point(6, 0), Point(6, 1), Point(6, 6), Point(6, 7),
-          Point(7, 0), Point(7, 1), Point(7, 6), Point(7, 7),
-        ],
-        initialLayout: const [
-          [BlockType.stone, BlockType.stone, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.stone, BlockType.stone],
-          [BlockType.stone, BlockType.stone, BlockType.normal, BlockType.ice, BlockType.ice, BlockType.normal, BlockType.stone, BlockType.stone],
-          [BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal],
-          [BlockType.normal, BlockType.ice, BlockType.normal, BlockType.stone, BlockType.stone, BlockType.normal, BlockType.ice, BlockType.normal],
-          [BlockType.normal, BlockType.ice, BlockType.normal, BlockType.stone, BlockType.stone, BlockType.normal, BlockType.ice, BlockType.normal],
-          [BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal],
-          [BlockType.stone, BlockType.stone, BlockType.normal, BlockType.ice, BlockType.ice, BlockType.normal, BlockType.stone, BlockType.stone],
-          [BlockType.stone, BlockType.stone, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.stone, BlockType.stone],
-        ],
-      ),
-      
-      // Level 3: Hourglass shape with bomb blocks
-      createLevel(
-        levelNumber: 3,
-        targetScore: 3000,
-        moveLimit: 20,
         bombProbability: 0.08,
-        availableColors: basicColors,
+        hints: const [
+          "Bomb blocks clear all blocks of the same color!",
+          "Try to match bomb blocks with large color groups",
+        ],
+        rewards: const {
+          'coins': 200,
+          'bomb_powerup': 1,
+        },
         // Hourglass shape using blocked cells
         blockedCells: const [
           Point(0, 0), Point(0, 1), Point(0, 6), Point(0, 7),
@@ -125,24 +125,6 @@ class LevelData {
           [BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal],
           [BlockType.stone, BlockType.stone, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.normal, BlockType.stone, BlockType.stone],
         ],
-        objectives: const [
-          LevelObjective.score,
-          LevelObjective.matchBombs,
-          LevelObjective.clearBlocks,
-        ],
-        objectiveTargets: const {
-          LevelObjective.score: 3000,
-          LevelObjective.matchBombs: 3,
-          LevelObjective.clearBlocks: 30,
-        },
-        hints: const [
-          "Bomb blocks clear all blocks of the same color!",
-          "Try to match bomb blocks with large color groups",
-        ],
-        rewards: const {
-          'coins': 200,
-          'bomb_powerup': 1,
-        },
       ),
       
       // Level 4: Butterfly shape with portals

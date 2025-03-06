@@ -102,11 +102,11 @@ class LevelScreen extends StatelessWidget {
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        const Icon(
-                                          Icons.monetization_on_rounded,
-                                          color: Color(0xFFFFB75E),
-                                          size: 24,
-                                        ),
+                                        Image.asset(
+                                              'assets/icons/coin/coin_gold2_64px.png',
+                                            width: 24,
+                                            height: 24,
+                                          ),
                                         const SizedBox(width: 8),
                                         Text(
                                           '${gameProvider.totalCoins}',
@@ -213,19 +213,27 @@ class LevelScreen extends StatelessWidget {
                                         ),
                                       const SizedBox(height: 12),
                                       // Level status icon
-                                      Icon(
-                                        isCompleted
-                                            ? Icons.star_rounded
-                                            : isUnlocked
-                                                ? Icons.play_circle_fill_rounded
-                                                : Icons.lock_rounded,
-                                        color: isCompleted
-                                            ? const Color(0xFFFFB75E)
-                                            : isUnlocked
-                                                ? const Color(0xFF43CEA2)
-                                                : const Color.fromARGB(255, 244, 241, 241),
-                                        size: 32,
-                                      ),
+                                      Image.asset(
+                        isCompleted
+                          ? 'assets/icons/star/gold_star_64px.png'
+                          : isUnlocked
+                              ? 'assets/icons/play/green_arrow_x64.png'
+                              : 'assets/icons/lock/lock_white_x64.png',
+                        width: 32,
+                        height: 32,),
+                                      // Icon(
+                                      //   isCompleted
+                                      //       ? Icons.star_rounded
+                                      //       : isUnlocked
+                                      //           ? Icons.play_circle_fill_rounded
+                                      //           : Icons.lock_rounded,
+                                      //   color: isCompleted
+                                      //       ? const Color(0xFFFFB75E)
+                                      //       : isUnlocked
+                                      //           ? const Color(0xFF43CEA2)
+                                      //           : const Color.fromARGB(255, 244, 241, 241),
+                                      //   size: 32,
+                                      // ),
                                     ],
                                   ),
                                 ),
